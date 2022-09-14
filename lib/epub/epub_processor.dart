@@ -135,7 +135,7 @@ class EpubProcessor {
 
       final dstFile = File(dstPath);
       if (!await dstFile.exists()) {
-        dstFile.create(recursive: true);
+        await dstFile.create(recursive: true);
       }
       await File(srcPath).copy(dstPath);
     });
