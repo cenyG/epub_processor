@@ -1,21 +1,27 @@
 part of epub_processor;
 
+final _sep = Platform.pathSeparator;
+
 class EpubProcessor {
   EpubProcessor._(
       {required this.epubPath, required this.dstDir, required this.tmpDir});
 
   String epubPath;
-  String dstDir;
   String tmpDir;
+  String dstDir;
 
-  late Metadata metadata;
-  final Map<String, ManifestItem> manifest = {};
-  List<SpineItem> spine = [];
+  EpubPresenter epubPresenter = EpubPresenter(Metadata(), {}, []);
 
-  static Future<EpubProcessor> process(
+  static Future<EpubPresenter> process(
       {required String epubPath,
       required String dstDir,
-      required String tmpDir}) async {
+      required String tmpDir,
+      force = false}) async {
+    if (!force) {
+      final oldImport = await _checkOldImports(epubPath, dstDir);
+      if (oldImport != null) return oldImport;
+    }
+
     final zip = await File(epubPath).rename('$epubPath.zip');
     await extractFileToDisk(zip.path, tmpDir);
     zip.rename(epubPath);
@@ -25,8 +31,65 @@ class EpubProcessor {
 
     await processor._loadMeta();
     await Future.wait([processor._parseHtmlFiles(), processor._copyContent()]);
+    await processor._writeCheckSum();
+    await processor._serializeJson();
+    await processor._wipeUselessItems();
 
-    return processor;
+    return processor.epubPresenter;
+  }
+
+  static Future<EpubPresenter?> fromJson(String dstDir) {
+    return _deserializeJson(dstDir);
+  }
+
+  static Future<EpubPresenter?> _checkOldImports(epubPath, dstDir) async {
+    if (await Directory(dstDir).exists() &&
+        await _checkSumEquals(epubPath, dstDir)) {
+      return await _deserializeJson(dstDir);
+    }
+  }
+
+  static Future<bool> _checkSumEquals(String epubPath, String dstDir) async {
+    final checkSumFile = File('$dstDir/CHECK_SUM');
+    if (!await checkSumFile.exists()) {
+      return false;
+    }
+
+    final prevCheckSum = await checkSumFile.readAsString();
+    final currentCheckSum = await getFileChecksum(File(epubPath));
+
+    return prevCheckSum == currentCheckSum;
+  }
+
+  static Future<EpubPresenter?> _deserializeJson(String dstDir) async {
+    final tmp = dstDir.split(_sep);
+    final jsonName = '${tmp[tmp.length - 1]}.json';
+
+    final jsonFile = File([dstDir, jsonName].join(_sep));
+    if (!await jsonFile.exists()) {
+      print('json file not exists');
+      return null;
+    }
+
+    return EpubPresenter.fromJson(jsonDecode(await jsonFile.readAsString()));
+  }
+
+  _wipeUselessItems() {
+    return Directory(tmpDir).delete(recursive: true);
+  }
+
+  _serializeJson() async {
+    final tmp = dstDir.split(_sep);
+    final jsonName = '${tmp[tmp.length - 1]}.json';
+
+    final jsonFile =
+        await File([dstDir, jsonName].join(_sep)).create(recursive: true);
+    await jsonFile.writeAsString(jsonEncode(epubPresenter.toJson()));
+  }
+
+  _writeCheckSum() async {
+    final checkSum = await getFileChecksum(File(epubPath));
+    await File('$dstDir/CHECK_SUM').writeAsString(checkSum);
   }
 
   _loadMeta() async {
@@ -72,7 +135,7 @@ class EpubProcessor {
         })
         .firstOrNull
         ?.getAttribute('content');
-    metadata = Metadata(
+    epubPresenter.metadata = Metadata(
         title: _metaTagText(root, 'dc:title'),
         subject: _metaTagText(root, 'dc:subject'),
         creator: _metaTagText(root, 'dc:creator'),
@@ -93,7 +156,8 @@ class EpubProcessor {
       final mediaType = element.getAttribute('media-type') ?? '';
 
       if (id != null) {
-        manifest[id] = ManifestItem(id: id, href: href, mediaType: mediaType);
+        epubPresenter.manifest[id] =
+            ManifestItem(id: id, href: href, mediaType: mediaType);
       }
     }
   }
@@ -101,7 +165,7 @@ class EpubProcessor {
   _loadSpine(XmlElement? root) {
     if (root == null) throw Exception('no spine found');
 
-    spine = root.childElements.map((element) {
+    epubPresenter.spine = root.childElements.map((element) {
       final id = element.getAttribute('idref') ?? '';
       final linear = element.getAttribute('linear') ?? '';
       final properties = element.getAttribute('properties') ?? '';
@@ -111,8 +175,8 @@ class EpubProcessor {
   }
 
   Future _parseHtmlFiles() async {
-    for (var element in spine) {
-      final contentLocalPath = manifest[element.id]!.href;
+    for (var element in epubPresenter.spine) {
+      final contentLocalPath = epubPresenter.manifest[element.id]!.href;
       final contentFile = File('$tmpDir/$contentLocalPath');
       final content = await contentFile.readAsString();
 
@@ -124,7 +188,7 @@ class EpubProcessor {
   }
 
   Future _copyContent() async {
-    final hrefs = manifest.values
+    final hrefs = epubPresenter.manifest.values
         .where((e) => !e.href.endsWith('.html'))
         .map((e) => e.href)
         .toList();
