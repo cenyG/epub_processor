@@ -4,13 +4,15 @@ final _sep = Platform.pathSeparator;
 
 class EpubProcessor {
   EpubProcessor._(
-      {required this.epubPath, required this.dstDir, required this.tmpDir});
+      {required this.epubPath, required this.dstDir, required this.tmpDir}) {
+    epubPresenter = EpubPresenter(Metadata(), {}, [], dstDir);
+  }
 
   String epubPath;
   String tmpDir;
   String dstDir;
 
-  EpubPresenter epubPresenter = EpubPresenter(Metadata(), {}, []);
+  late EpubPresenter epubPresenter;
 
   static Future<EpubPresenter> process(
       {required String epubPath,
@@ -180,7 +182,7 @@ class EpubProcessor {
       final contentFile = File('$tmpDir/$contentLocalPath');
       final content = await contentFile.readAsString();
 
-      final resStr = HtmlParser.parseHtml(content);
+      final resStr = HtmlParser.parseHtml(content, dstDir);
       final resultFile =
           await File('$dstDir/$contentLocalPath').create(recursive: true);
       resultFile.writeAsString(resStr);
@@ -189,7 +191,7 @@ class EpubProcessor {
 
   Future _copyContent() async {
     final hrefs = epubPresenter.manifest.values
-        .where((e) => !e.href.endsWith('.html'))
+        .where((e) => !e.href.endsWith('.html') && !e.href.endsWith('.xhtml'))
         .map((e) => e.href)
         .toList();
 

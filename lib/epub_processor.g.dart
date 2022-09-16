@@ -15,6 +15,7 @@ EpubPresenter _$EpubPresenterFromJson(Map<String, dynamic> json) =>
       (json['spine'] as List<dynamic>)
           .map((e) => SpineItem.fromJson(e as Map<String, dynamic>))
           .toList(),
+      json['baseDir'] as String,
     );
 
 Map<String, dynamic> _$EpubPresenterToJson(EpubPresenter instance) =>
@@ -22,6 +23,7 @@ Map<String, dynamic> _$EpubPresenterToJson(EpubPresenter instance) =>
       'metadata': instance.metadata,
       'manifest': instance.manifest,
       'spine': instance.spine,
+      'baseDir': instance.baseDir,
     };
 
 Metadata _$MetadataFromJson(Map<String, dynamic> json) => Metadata(
