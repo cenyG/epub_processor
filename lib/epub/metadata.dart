@@ -48,6 +48,9 @@ class SpineItem {
   String id;
   String linear;
   String properties;
+
+  late int size;
+  
   factory SpineItem.fromJson(Map<String, dynamic> json) =>
       _$SpineItemFromJson(json);
   Map<String, dynamic> toJson() => _$SpineItemToJson(this);

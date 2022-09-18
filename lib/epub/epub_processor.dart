@@ -118,15 +118,12 @@ class EpubProcessor {
     final opf = await opfFile.readAsString();
     final opfDocRoot = XmlDocument.parse(opf).root;
 
-    _loadMatadata(opfDocRoot.findAllElements('metadata').firstOrNull);
-    _loadManifest(opfDocRoot.findAllElements('manifest').firstOrNull);
-    _loadSpine(opfDocRoot.findAllElements('spine').firstOrNull);
-
-    await Directory(dstDir).create(recursive: true);
-    await Future.wait([_parseHtmlFiles(), _copyContent()]);
+    _parseMatadata(opfDocRoot.findAllElements('metadata').firstOrNull);
+    _parseManifest(opfDocRoot.findAllElements('manifest').firstOrNull);
+    _parseSpine(opfDocRoot.findAllElements('spine').firstOrNull);
   }
 
-  _loadMatadata(XmlElement? root) {
+  _parseMatadata(XmlElement? root) {
     if (root == null) throw Exception('no metadata found');
 
     final coverId = root
@@ -149,7 +146,7 @@ class EpubProcessor {
         coverId: coverId ?? '');
   }
 
-  _loadManifest(XmlElement? root) {
+  _parseManifest(XmlElement? root) {
     if (root == null) throw Exception('no manifest found');
 
     for (var element in root.childElements) {
@@ -164,7 +161,7 @@ class EpubProcessor {
     }
   }
 
-  _loadSpine(XmlElement? root) {
+  _parseSpine(XmlElement? root) {
     if (root == null) throw Exception('no spine found');
 
     epubPresenter.spine = root.childElements.map((element) {
@@ -177,16 +174,22 @@ class EpubProcessor {
   }
 
   Future _parseHtmlFiles() async {
+    List<Future> waitList = [];
+
     for (var element in epubPresenter.spine) {
       final contentLocalPath = epubPresenter.manifest[element.id]!.href;
       final contentFile = File('$tmpDir/$contentLocalPath');
       final content = await contentFile.readAsString();
 
-      final resStr = HtmlParser.parseHtml(content, dstDir);
+      final htmlInfo = HtmlParser.parseHtml(content, dstDir);
+      element.size = htmlInfo.size;
+
       final resultFile =
           await File('$dstDir/$contentLocalPath').create(recursive: true);
-      resultFile.writeAsString(resStr);
+      waitList.add(resultFile.writeAsString(htmlInfo.lines.toString())) ;
     }
+
+    return Future.wait(waitList);
   }
 
   Future _copyContent() async {

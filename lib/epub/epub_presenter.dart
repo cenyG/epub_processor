@@ -9,6 +9,9 @@ class EpubPresenter {
   List<SpineItem> spine;
   String baseDir;
 
+  int _size = 0;
+  int get size => _size == 0 ? _size = spine.fold(0, (value, element) => element.size + value) : _size;
+
   String getPath(String id) {
     return [baseDir, manifest[id]!.href].join(_sep);
   }

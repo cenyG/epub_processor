@@ -67,10 +67,11 @@ SpineItem _$SpineItemFromJson(Map<String, dynamic> json) => SpineItem(
       id: json['id'] as String? ?? '',
       linear: json['linear'] as String? ?? '',
       properties: json['properties'] as String? ?? '',
-    );
+    )..size = json['size'] as int;
 
 Map<String, dynamic> _$SpineItemToJson(SpineItem instance) => <String, dynamic>{
       'id': instance.id,
       'linear': instance.linear,
       'properties': instance.properties,
+      'size': instance.size,
     };

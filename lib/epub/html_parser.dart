@@ -1,37 +1,49 @@
 part of epub_processor;
 
+class HtmlInfo {
+  int size = 0;
+  StringBuffer lines = StringBuffer();
+}
+
 class HtmlParser {
-  static String parseHtml(String htmlStr, String basePath) {
+  static HtmlInfo parseHtml(String htmlStr, String basePath) {
     final document = XmlDocument.parse(htmlStr);
     final body = document.findAllElements('body').first;
 
-    final lines = _parseLines(body.childElements, basePath);
+    final htmlInfo = HtmlInfo();
+    _parseLines(body.childElements, basePath, (size, str) {
+      htmlInfo.lines.writeln(str);
+      htmlInfo.size += size;
+    });
 
-    return lines.join('\n');
+    return htmlInfo;
   }
 
-  static List<String> _parseLines(Iterable<XmlElement> xmlElements, String basePath) {
-    List<String> lines = [];
-
+  static _parseLines(Iterable<XmlElement> xmlElements, String basePath,
+      Function(int size, String str) walker) {
     for (var elem in xmlElements) {
-      if (elem.qualifiedName == 'div') {
-        if (elem.childElements.isNotEmpty) {
-          lines.addAll(_parseLines(elem.childElements, basePath));
-        } else {
-          lines.add(['div', elem.text.replaceAll('\n', ' ')].join(':'));
-        }
-      } else if (elem.qualifiedName == 'img') {
-        final href = elem.getAttribute('src');
+      final tag = elem.qualifiedName;
 
-        lines.add(['img', href != null ? [basePath, href].join(_sep) : ''].join(':'));
-      } else if (elem.qualifiedName == 'br') {
-        lines.add(['br', ''].join(':'));
-      } else {
-        lines.add(
-            [elem.qualifiedName, elem.text.replaceAll('\n', ' ')].join(':'));
+      switch (tag) {
+        case 'div':
+          if (elem.childElements.isNotEmpty) {
+            _parseLines(elem.childElements, basePath, walker);
+          } else {
+            final text = elem.text.replaceAll('\n', ' ');
+            walker(text.length, [tag, text.length, text].join(':'));
+          }
+          break;
+        case 'img':
+          final tmpHref = elem.getAttribute('src');
+          final href = tmpHref != null ? [basePath, tmpHref].join(_sep) : '';
+
+          walker(0, [tag, 0, href].join(':'));
+          break;
+        default:
+          final text = elem.text.replaceAll('\n', ' ');
+          walker(text.length, [tag, text.length, text].join(':'));
+          break;
       }
     }
-
-    return lines;
   }
 }

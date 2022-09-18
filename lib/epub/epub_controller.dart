@@ -1,9 +1,10 @@
 part of epub_processor;
 
-class Line {
-  Line(this.tag, this.text);
+class TextLine {
+  TextLine(this.tag, this.size, this.text);
 
   String tag;
+  int size;
   String text;
 }
 
@@ -13,9 +14,9 @@ class EpubController {
   int currentSpineIndex;
   int currentLineIndex;
 
-  late List<Line> prevChapter;
-  late List<Line> currentChapter;
-  late List<Line> nextChapter;
+  late List<TextLine> prevChapter;
+  late List<TextLine> currentChapter;
+  late List<TextLine> nextChapter;
 
   EpubController(
       {required this.epubPresenter,
@@ -31,11 +32,11 @@ class EpubController {
     await _loadNextChapter();
   }
 
-  Line value() {
+  TextLine value() {
     return currentChapter[currentLineIndex];
   }
 
-  Line? next() {
+  Future<TextLine?> next() async {
     final linesCount = currentChapter.length - 1;
 
     if (currentLineIndex == linesCount) {
@@ -46,7 +47,7 @@ class EpubController {
       currentChapter = nextChapter;
       currentSpineIndex = currentSpineIndex + 1;
       currentLineIndex = 0;
-      _loadNextChapter();
+      await _loadNextChapter();
     } else {
       currentLineIndex++;
     }
@@ -54,7 +55,7 @@ class EpubController {
     return currentChapter[currentLineIndex];
   }
 
-  Line? prev() {
+  Future<TextLine?> prev() async {
     if (currentLineIndex == 0) {
       if (prevChapter.isEmpty) {
         return null;
@@ -63,7 +64,7 @@ class EpubController {
       currentChapter = prevChapter;
       currentSpineIndex = currentSpineIndex - 1;
       currentLineIndex = currentChapter.length;
-      _loadPrevChapter();
+      await _loadPrevChapter();
     }
 
     return currentChapter[currentLineIndex];
@@ -95,14 +96,14 @@ class EpubController {
     return _lines(prevLocation).then((value) => prevChapter = value);
   }
 
-  Future<List<Line>> _lines(String path) {
+  Future<List<TextLine>> _lines(String path) {
     return File(path)
         .openRead()
         .transform(utf8.decoder)
         .transform(LineSplitter())
         .map((line) {
-      final div = line.indexOf(':');
-      return Line(line.substring(0, div), line.substring(div + 1));
+      final parts = line.split(':');
+      return TextLine(parts[0], int.parse(parts[1]), parts[2]);
     }).toList();
   }
 }
