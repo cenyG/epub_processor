@@ -18,10 +18,7 @@ class EpubController {
   late List<TextLine> currentChapter;
   late List<TextLine> nextChapter;
 
-  EpubController(
-      {required this.epubPresenter,
-      this.currentSpineIndex = 0,
-      this.currentLineIndex = 0});
+  EpubController({required this.epubPresenter, this.currentSpineIndex = 0, this.currentLineIndex = 0});
 
   init() async {
     final currentSpine = epubPresenter.spine[currentSpineIndex];
@@ -97,13 +94,15 @@ class EpubController {
   }
 
   Future<List<TextLine>> _lines(String path) {
-    return File(path)
-        .openRead()
-        .transform(utf8.decoder)
-        .transform(LineSplitter())
-        .map((line) {
-      final parts = line.split(':');
-      return TextLine(parts[0], int.parse(parts[1]), parts[2]);
+    return File(path).openRead().transform(utf8.decoder).transform(LineSplitter()).map((line) {
+      final firstIndex = line.indexOf(':');
+      final secondIndex = line.indexOf(':', firstIndex + 1);
+
+      final part1 = line.substring(0, firstIndex);
+      final part2 = line.substring(firstIndex + 1, secondIndex);
+      final part3 = line.substring(secondIndex + 1);
+
+      return TextLine(part1, int.parse(part2), part3);
     }).toList();
   }
 }

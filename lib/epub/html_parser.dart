@@ -35,7 +35,7 @@ class HtmlParser {
           break;
         case 'img':
           final tmpHref = elem.getAttribute('src');
-          final href = tmpHref != null ? [basePath, tmpHref].join(_sep) : '';
+          final href = tmpHref != null ? [basePath, tmpHref].join(sep) : '';
 
           walker(0, [tag, 0, href].join(':'));
           break;

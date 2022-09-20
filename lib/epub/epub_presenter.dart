@@ -13,7 +13,7 @@ class EpubPresenter {
   int get size => _size == 0 ? _size = spine.fold(0, (value, element) => element.size + value) : _size;
 
   String getPath(String id) {
-    return [baseDir, manifest[id]!.href].join(_sep);
+    return [baseDir, manifest[id]!.href].join(sep);
   }
 
   factory EpubPresenter.fromJson(Map<String, dynamic> json) =>

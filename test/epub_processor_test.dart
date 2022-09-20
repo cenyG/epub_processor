@@ -3,19 +3,19 @@ import 'dart:io';
 import 'package:epub_processor/epub_processor.dart';
 import 'package:test/test.dart';
 
-final _sep = Platform.pathSeparator;
+final sep = Platform.pathSeparator;
 
 void main() {
-  final epubsPath = Directory(['test', 'epubs'].join(_sep)).absolute.path;
+  final epubsPath = Directory(['test', 'epubs'].join(sep)).absolute.path;
   final epubs = ['1.epub', '2.epub', '3.epub'];
 
   test('with cache', () async {
     for (var epub in epubs) {
       final name = epub.split('.').first;
 
-      final epubPath = [epubsPath, epub].join(_sep);
-      final tmpPath = [epubsPath, 'tmp', name].join(_sep);
-      final distPath = [epubsPath, 'gen', name].join(_sep);
+      final epubPath = [epubsPath, epub].join(sep);
+      final tmpPath = [epubsPath, 'tmp', name].join(sep);
+      final distPath = [epubsPath, 'gen', name].join(sep);
 
       final start = DateTime.now().millisecondsSinceEpoch;
       await EpubProcessor.process(
@@ -30,9 +30,9 @@ void main() {
     for (var epub in epubs) {
       final name = epub.split('.').first;
 
-      final epubPath = [epubsPath, epub].join(_sep);
-      final tmpPath = [epubsPath, 'tmp', name].join(_sep);
-      final distPath = [epubsPath, 'gen', name].join(_sep);
+      final epubPath = [epubsPath, epub].join(sep);
+      final tmpPath = [epubsPath, 'tmp', name].join(sep);
+      final distPath = [epubsPath, 'gen', name].join(sep);
 
       final start = DateTime.now().millisecondsSinceEpoch;
       await EpubProcessor.process(
@@ -47,7 +47,7 @@ void main() {
     for (var epub in epubs) {
       final name = epub.split('.').first;
 
-      final distPath = [epubsPath, 'gen', name].join(_sep);
+      final distPath = [epubsPath, 'gen', name].join(sep);
 
       final start = DateTime.now().millisecondsSinceEpoch;
       await EpubProcessor.fromJson(distPath);
