@@ -9,13 +9,15 @@ class EpubProcessor {
   String tmpDir;
   String dstDir;
 
+  String contentDir = '';
+
   late EpubPresenter epubPresenter;
 
   static Future<EpubPresenter> process(
       {required String epubPath, required String dstDir, required String tmpDir, force = false}) async {
     for (var element in [Directory(tmpDir), Directory(dstDir)]) {
       if (!element.existsSync()) {
-        element.create(recursive: true);
+        await element.create(recursive: true);
       }
     }
 
@@ -24,8 +26,7 @@ class EpubProcessor {
       if (oldImport != null) return oldImport;
     }
 
-    final name = getFileName(epubPath);
-    final zip = await File(epubPath).copy([dstDir, '$name.zip'].join(sep));
+    final zip = await File(epubPath).copy([dstDir, '${getRandomString(15)}.zip'].join(sep));
     await extractFileToDisk(zip.path, tmpDir);
     await zip.delete();
 
@@ -38,58 +39,6 @@ class EpubProcessor {
     await processor._wipeUselessItems();
 
     return processor.epubPresenter;
-  }
-
-  static Future<EpubPresenter?> fromJson(String dstDir) {
-    return _deserializeJson(dstDir);
-  }
-
-  static Future<EpubPresenter?> _checkOldImports(epubPath, dstDir) async {
-    if (await Directory(dstDir).exists() && await _checkSumEquals(epubPath, dstDir)) {
-      return await _deserializeJson(dstDir);
-    }
-  }
-
-  static Future<bool> _checkSumEquals(String epubPath, String dstDir) async {
-    final checkSumFile = File('$dstDir/CHECK_SUM');
-    if (!await checkSumFile.exists()) {
-      return false;
-    }
-
-    final prevCheckSum = await checkSumFile.readAsString();
-    final currentCheckSum = await getFileChecksum(File(epubPath));
-
-    return prevCheckSum == currentCheckSum;
-  }
-
-  static Future<EpubPresenter?> _deserializeJson(String dstDir) async {
-    final tmp = dstDir.split(sep);
-    final jsonName = '${tmp[tmp.length - 1]}.json';
-
-    final jsonFile = File([dstDir, jsonName].join(sep));
-    if (!await jsonFile.exists()) {
-      print('json file not exists');
-      return null;
-    }
-
-    return EpubPresenter.fromJson(jsonDecode(await jsonFile.readAsString()));
-  }
-
-  _wipeUselessItems() {
-    return Directory(tmpDir).delete(recursive: true);
-  }
-
-  _serializeJson() async {
-    final tmp = dstDir.split(sep);
-    final jsonName = '${tmp[tmp.length - 1]}.json';
-
-    final jsonFile = await File([dstDir, jsonName].join(sep)).create(recursive: true);
-    await jsonFile.writeAsString(jsonEncode(epubPresenter.toJson()));
-  }
-
-  _writeCheckSum() async {
-    final checkSum = await getFileChecksum(File(epubPath));
-    await File('$dstDir/CHECK_SUM').writeAsString(checkSum);
   }
 
   _loadMeta() async {
@@ -108,6 +57,12 @@ class EpubProcessor {
     final opfPath = nodeRootfile.attributes['full-path'];
     if (opfPath == null) {
       throw Exception('Wrong opf no full-path attribute');
+    }
+
+    final tmpLastIndex = opfPath.lastIndexOf('/');
+    if (tmpLastIndex > 0) {
+      contentDir = opfPath.substring(0, tmpLastIndex);
+      epubPresenter.contentDir = contentDir;
     }
 
     final opfFile = File('$tmpDir/$opfPath');
@@ -175,13 +130,13 @@ class EpubProcessor {
 
     for (var element in epubPresenter.spine) {
       final contentLocalPath = epubPresenter.manifest[element.id]!.href;
-      final contentFile = File('$tmpDir/$contentLocalPath');
+      final contentFile = File([tmpDir, contentDir, contentLocalPath].where((element) => element.isNotEmpty).join(sep));
       final content = await contentFile.readAsString();
 
       final htmlInfo = HtmlParser.parseHtml(content, dstDir);
       element.size = htmlInfo.size;
 
-      final resultFile = await File('$dstDir/$contentLocalPath').create(recursive: true);
+      final resultFile = await File([dstDir, contentDir, contentLocalPath].join(sep)).create(recursive: true);
       waitList.add(resultFile.writeAsString(htmlInfo.lines.toString()));
     }
 
@@ -195,8 +150,8 @@ class EpubProcessor {
         .toList();
 
     await Future.forEach(hrefs, (href) async {
-      final srcPath = '$tmpDir/$href';
-      final dstPath = '$dstDir/$href';
+      final srcPath = [tmpDir, contentDir, href].where((element) => element.isNotEmpty).join(sep);
+      final dstPath = [dstDir, contentDir, href].where((element) => element.isNotEmpty).join(sep);
 
       final dstFile = File(dstPath);
       if (!await dstFile.exists()) {
@@ -204,6 +159,58 @@ class EpubProcessor {
       }
       await File(srcPath).copy(dstPath);
     });
+  }
+
+  _wipeUselessItems() {
+    return Directory(tmpDir).delete(recursive: true);
+  }
+
+  static Future<EpubPresenter?> _checkOldImports(epubPath, dstDir) async {
+    if (await Directory(dstDir).exists() && await _checkSumEquals(epubPath, dstDir)) {
+      return await _deserializeJson(dstDir);
+    }
+  }
+
+  static Future<bool> _checkSumEquals(String epubPath, String dstDir) async {
+    final checkSumFile = File('$dstDir/CHECK_SUM');
+    if (!await checkSumFile.exists()) {
+      return false;
+    }
+
+    final prevCheckSum = await checkSumFile.readAsString();
+    final currentCheckSum = await getFileChecksum(File(epubPath));
+
+    return prevCheckSum == currentCheckSum;
+  }
+
+  static Future<EpubPresenter?> fromJson(String dstDir) {
+    return _deserializeJson(dstDir);
+  }
+
+  _serializeJson() async {
+    final tmp = dstDir.split(sep);
+    final jsonName = '${tmp[tmp.length - 1]}.json';
+
+    final jsonFile = await File([dstDir, jsonName].join(sep)).create(recursive: true);
+    await jsonFile.writeAsString(jsonEncode(epubPresenter.toJson()));
+  }
+
+  _writeCheckSum() async {
+    final checkSum = await getFileChecksum(File(epubPath));
+    await File('$dstDir/CHECK_SUM').writeAsString(checkSum);
+  }
+
+  static Future<EpubPresenter?> _deserializeJson(String dstDir) async {
+    final tmp = dstDir.split(sep);
+    final jsonName = '${tmp[tmp.length - 1]}.json';
+
+    final jsonFile = File([dstDir, jsonName].join(sep));
+    if (!await jsonFile.exists()) {
+      print('json file not exists');
+      return null;
+    }
+
+    return EpubPresenter.fromJson(jsonDecode(await jsonFile.readAsString()));
   }
 
   String _metaTagText(XmlElement root, String tag) => root.findAllElements(tag).firstOrNull?.text ?? '';

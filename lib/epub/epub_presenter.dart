@@ -8,12 +8,18 @@ class EpubPresenter {
   Map<String, ManifestItem> manifest;
   List<SpineItem> spine;
   String baseDir;
+  
+  String contentDir = '';
 
   int _size = 0;
   int get size => _size == 0 ? _size = spine.fold(0, (value, element) => element.size + value) : _size;
 
   String getPath(String id) {
-    return [baseDir, manifest[id]!.href].join(sep);
+    return [baseDir, contentDir, manifest[id]!.href].where((element) => element.isNotEmpty).join(sep);
+  }
+
+  String? getCoverPath() {
+    return getPath(metadata.coverId);
   }
 
   factory EpubPresenter.fromJson(Map<String, dynamic> json) =>

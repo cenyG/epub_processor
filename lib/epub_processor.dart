@@ -2,6 +2,7 @@ library epub_processor;
 
 import 'dart:io';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:archive/archive_io.dart';
 import 'package:epub_processor/utils/files.dart';
