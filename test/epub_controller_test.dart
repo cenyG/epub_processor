@@ -7,7 +7,7 @@ final sep = Platform.pathSeparator;
 
 void main() {
   final epubsPath = Directory(['test', 'epubs'].join(sep)).absolute.path;
-  final epubs = ['1.epub'];
+  final epubs = ['vedma.epub'];
 
   test('controller', () async {
     for (var epub in epubs) {
@@ -17,8 +17,8 @@ void main() {
       final tmpPath = [epubsPath, 'tmp', name].join(sep);
       final distPath = [epubsPath, 'gen', name].join(sep);
 
-      final epubPresenter =
-          await EpubProcessor.process(epubPath: epubPath, dstDir: distPath, tmpDir: tmpPath, force: true);
+      final EpubPresenter epubPresenter = await EpubProcessor.process(
+          epubPath: epubPath, dstDir: distPath, tmpDir: tmpPath, force: true, wipeTmp: false);
 
       final controller = EpubController(epubPresenter: epubPresenter);
       await controller.init();

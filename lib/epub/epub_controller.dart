@@ -23,7 +23,7 @@ class EpubController {
   init() async {
     final currentSpine = epubPresenter.spine[currentSpineIndex];
     final currentLocation = epubPresenter.getPath(currentSpine.id);
-    await _lines(currentLocation).then((value) => currentChapter = value);
+    await _chapterLines(currentLocation).then((value) => currentChapter = value);
 
     await _loadPrevChapter();
     await _loadNextChapter();
@@ -62,6 +62,8 @@ class EpubController {
       currentSpineIndex = currentSpineIndex - 1;
       currentLineIndex = currentChapter.length;
       await _loadPrevChapter();
+    } else {
+      currentLineIndex--;
     }
 
     return currentChapter[currentLineIndex];
@@ -78,7 +80,7 @@ class EpubController {
     final nextSpine = epubPresenter.spine[currentSpineIndex + 1];
     final nextLocation = epubPresenter.getPath(nextSpine.id);
 
-    return _lines(nextLocation).then((value) => nextChapter = value);
+    return _chapterLines(nextLocation).then((value) => nextChapter = value);
   }
 
   _loadPrevChapter() {
@@ -90,19 +92,35 @@ class EpubController {
     final prevSpine = epubPresenter.spine[currentSpineIndex - 1];
     final prevLocation = epubPresenter.getPath(prevSpine.id);
 
-    return _lines(prevLocation).then((value) => prevChapter = value);
+    return _chapterLines(prevLocation).then((value) => prevChapter = value);
   }
 
-  Future<List<TextLine>> _lines(String path) {
-    return File(path).openRead().transform(utf8.decoder).transform(LineSplitter()).map((line) {
-      final firstIndex = line.indexOf(':');
-      final secondIndex = line.indexOf(':', firstIndex + 1);
+  Future<List<TextLine>> _chapterLines(String chapterPath) {
+    return File(chapterPath)
+        .openRead()
+        .transform(utf8.decoder)
+        .transform(LineSplitter())
+        .where((str) => str.isNotEmpty)
+        .map((line) {
+          final firstIndex = line.indexOf(':');
+          final secondIndex = line.indexOf(':', firstIndex + 1);
 
-      final part1 = line.substring(0, firstIndex);
-      final part2 = line.substring(firstIndex + 1, secondIndex);
-      final part3 = line.substring(secondIndex + 1);
+          final part1 = line.substring(0, firstIndex);
+          final part2 = line.substring(firstIndex + 1, secondIndex);
+          var part3 = line.substring(secondIndex + 1);
 
-      return TextLine(part1, int.parse(part2), part3);
-    }).toList();
+          if (part1 == 'img') {
+            final lastIndex = chapterPath.lastIndexOf(sep);
+            final currentPath = chapterPath.substring(0, lastIndex);
+            part3 = [currentPath, part3].join(sep);
+          }
+
+          return TextLine(part1, int.parse(part2), part3);
+        })
+        .toList()
+        .then((list) {
+          list.add(TextLine('end_chapter', 0, ''));
+          return list;
+        });
   }
 }

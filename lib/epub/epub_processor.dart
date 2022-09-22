@@ -14,7 +14,7 @@ class EpubProcessor {
   late EpubPresenter epubPresenter;
 
   static Future<EpubPresenter> process(
-      {required String epubPath, required String dstDir, required String tmpDir, force = false}) async {
+      {required String epubPath, required String dstDir, required String tmpDir, force = false, wipeTmp = true}) async {
     for (var element in [Directory(tmpDir), Directory(dstDir)]) {
       if (!element.existsSync()) {
         await element.create(recursive: true);
@@ -36,7 +36,9 @@ class EpubProcessor {
     await Future.wait([processor._parseHtmlFiles(), processor._copyContent()]);
     await processor._writeCheckSum();
     await processor._serializeJson();
-    await processor._wipeUselessItems();
+    if (wipeTmp) {
+      await processor._wipeUselessItems();
+    }
 
     return processor.epubPresenter;
   }
@@ -133,7 +135,7 @@ class EpubProcessor {
       final contentFile = File([tmpDir, contentDir, contentLocalPath].where((element) => element.isNotEmpty).join(sep));
       final content = await contentFile.readAsString();
 
-      final htmlInfo = HtmlParser.parseHtml(content, dstDir);
+      final htmlInfo = HtmlParser.parseHtml(content);
       element.size = htmlInfo.size;
 
       final resultFile = await File([dstDir, contentDir, contentLocalPath].join(sep)).create(recursive: true);

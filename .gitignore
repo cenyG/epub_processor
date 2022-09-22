@@ -4,5 +4,6 @@
 
 # Conventional directory for build output.
 build/
-test/epubs/gen/
-test/epubs/tmp/
+
+test/epubs/*
+.vscode/

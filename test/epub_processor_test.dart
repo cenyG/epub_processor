@@ -7,7 +7,7 @@ final sep = Platform.pathSeparator;
 
 void main() {
   final epubsPath = Directory(['test', 'epubs'].join(sep)).absolute.path;
-  final epubs = ['1.epub', '2.epub', '3.epub'];
+  final epubs = ['1.epub', '2.epub', '3.epub', 'kf.epub'];
 
   test('with cache', () async {
     for (var epub in epubs) {
@@ -19,7 +19,7 @@ void main() {
 
       final start = DateTime.now().millisecondsSinceEpoch;
       await EpubProcessor.process(
-          epubPath: epubPath, dstDir: distPath, tmpDir: tmpPath);
+          epubPath: epubPath, dstDir: distPath, tmpDir: tmpPath, wipeTmp: false);
       final end = DateTime.now().millisecondsSinceEpoch;
 
       print('Time to process: ${end - start}ms');
@@ -36,7 +36,7 @@ void main() {
 
       final start = DateTime.now().millisecondsSinceEpoch;
       await EpubProcessor.process(
-          epubPath: epubPath, dstDir: distPath, tmpDir: tmpPath, force: true);
+          epubPath: epubPath, dstDir: distPath, tmpDir: tmpPath, force: true, wipeTmp: false);
       final end = DateTime.now().millisecondsSinceEpoch;
 
       print('Time to process: ${end - start}ms');
