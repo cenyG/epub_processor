@@ -190,8 +190,8 @@ class EpubProcessor {
   }
 
   _serializeJson() async {
-    final tmp = dstDir.split(sep);
-    final jsonName = '${tmp[tmp.length - 1]}.json';
+    final bookName = dstDir.split(sep).last;
+    final jsonName = '$bookName.json';
 
     final jsonFile = await File([dstDir, jsonName].join(sep)).create(recursive: true);
     await jsonFile.writeAsString(jsonEncode(epubPresenter.toJson()));
@@ -203,8 +203,8 @@ class EpubProcessor {
   }
 
   static Future<EpubPresenter?> _deserializeJson(String dstDir) async {
-    final tmp = dstDir.split(sep);
-    final jsonName = '${tmp[tmp.length - 1]}.json';
+    final bookName = dstDir.split(sep).last;
+    final jsonName = '$bookName.json';
 
     final jsonFile = File([dstDir, jsonName].join(sep));
     if (!await jsonFile.exists()) {
