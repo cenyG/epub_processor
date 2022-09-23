@@ -7,7 +7,7 @@ final sep = Platform.pathSeparator;
 
 void main() {
   final epubsPath = Directory(['test', 'epubs'].join(sep)).absolute.path;
-  final epubs = ['vedma.epub'];
+  final epubs = ['molek.epub'];
 
   test('controller', () async {
     for (var epub in epubs) {

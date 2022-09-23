@@ -28,9 +28,11 @@ class HtmlParser {
           if (elem.childElements.isNotEmpty) {
             _parseLines(elem.childElements, walker);
           } else {
-            final text = elem.text.replaceAll('\n', ' ');
-            walker(text.length, [tag, text.length, text].join(':'));
+            _defaultBehavior(elem, walker);
           }
+          break;
+        case 'ul':
+          _parseLines(elem.childElements, walker);
           break;
         case 'img':
           final href = elem.getAttribute('src') ?? '';
@@ -42,10 +44,14 @@ class HtmlParser {
           walker(text.length, [tag, text.length, text].join(':'));
           break;
         default:
-          final text = elem.text.replaceAll('\n', ' ').trim();
-          walker(text.length, [tag, text.length, text].join(':'));
+          _defaultBehavior(elem, walker);
           break;
       }
     }
+  }
+
+  static _defaultBehavior(XmlElement elem, Function(int size, String str) walker) {
+    final text = elem.text.replaceAll('\n', ' ').trim();
+    walker(text.length, [elem.qualifiedName, text.length, text].join(':'));
   }
 }
