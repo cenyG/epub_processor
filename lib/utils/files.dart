@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:crypto/crypto.dart' as crypto;
 
@@ -15,4 +16,8 @@ String getFileName(String path) {
   final name = tmpSplit[tmpSplit.length - 1];
 
   return name;
+}
+
+Future<Map<String, dynamic>> readJsonFile(File json) async {
+  return jsonDecode(await json.readAsString());
 }

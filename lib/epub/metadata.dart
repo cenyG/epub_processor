@@ -55,3 +55,22 @@ class SpineItem {
       _$SpineItemFromJson(json);
   Map<String, dynamic> toJson() => _$SpineItemToJson(this);
 }
+
+
+@JsonSerializable()
+class Bookmark {
+  Bookmark({this.chapter = 0, this.line = 0, this.symbol = 0});
+
+  int chapter;
+  int line;
+  int symbol;
+  
+  @override
+  String toString(){
+    return '[bookmark:c_$chapter,l_$line,s_$symbol]';
+  }
+
+  factory Bookmark.fromJson(Map<String, dynamic> json) =>
+      _$BookmarkFromJson(json);
+  Map<String, dynamic> toJson() => _$BookmarkToJson(this);
+}

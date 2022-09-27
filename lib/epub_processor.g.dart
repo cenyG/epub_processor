@@ -76,3 +76,15 @@ Map<String, dynamic> _$SpineItemToJson(SpineItem instance) => <String, dynamic>{
       'properties': instance.properties,
       'size': instance.size,
     };
+
+Bookmark _$BookmarkFromJson(Map<String, dynamic> json) => Bookmark(
+      chapter: json['chapter'] as int? ?? 0,
+      line: json['line'] as int? ?? 0,
+      symbol: json['symbol'] as int? ?? 0,
+    );
+
+Map<String, dynamic> _$BookmarkToJson(Bookmark instance) => <String, dynamic>{
+      'chapter': instance.chapter,
+      'line': instance.line,
+      'symbol': instance.symbol,
+    };

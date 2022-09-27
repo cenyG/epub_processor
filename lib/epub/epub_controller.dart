@@ -1,102 +1,109 @@
 part of epub_processor;
 
 class TextLine {
-  TextLine(this.tag, this.size, this.text);
+  TextLine(this.tag, this.size, this.text, this.chapter);
 
   String tag;
   int size;
   String text;
+
+  int chapter;
+  late int index;
 }
 
 class EpubController {
   final EpubPresenter epubPresenter;
 
-  int currentSpineIndex;
-  int currentLineIndex;
+  late LinkedList chapters;
+  late LinkedListIterator lineIteratorForward;
+  late LinkedListIterator lineIteratorBackward;
+  late Bookmark bookmark;
 
-  late List<TextLine> prevChapter;
-  late List<TextLine> currentChapter;
-  late List<TextLine> nextChapter;
-
-  EpubController({required this.epubPresenter, this.currentSpineIndex = 0, this.currentLineIndex = 0});
+  EpubController({required this.epubPresenter});
 
   init() async {
-    final currentSpine = epubPresenter.spine[currentSpineIndex];
-    final currentLocation = epubPresenter.getPath(currentSpine.id);
-    await _chapterLines(currentLocation).then((value) => currentChapter = value);
+    chapters = LinkedList();
 
-    await _loadPrevChapter();
-    await _loadNextChapter();
+    await _loadBookmark();
+
+    await _chapterLines(bookmark.chapter)
+        .then((value) => value != null ? chapters.append(value) : print('end of chapters init'));
+    await _chapterLines(bookmark.chapter - 1)
+        .then((value) => value != null ? chapters.unshift(value) : print('end of chapters down'));
+    await _chapterLines(bookmark.chapter + 1)
+        .then((value) => value != null ? chapters.append(value) : print('end of chapters up'));
+
+    lineIteratorForward = chapters.iter.find(bookmark.chapter, bookmark.line);
+    lineIteratorBackward = chapters.iter.find(bookmark.chapter, bookmark.line);
+  }
+
+  File get bookmarkFile {
+    return File([epubPresenter.baseDir, 'bookmark.json'].join(sep));
   }
 
   TextLine value() {
-    return currentChapter[currentLineIndex];
+    return lineIteratorForward.current();
   }
 
   Future<TextLine?> next() async {
-    final linesCount = currentChapter.length - 1;
-
-    if (currentLineIndex == linesCount) {
-      if (nextChapter.isEmpty) {
-        return null;
-      }
-      prevChapter = currentChapter;
-      currentChapter = nextChapter;
-      currentSpineIndex = currentSpineIndex + 1;
-      currentLineIndex = 0;
+    if (!lineIteratorForward.hasNextChapter) {
       await _loadNextChapter();
-    } else {
-      currentLineIndex++;
     }
 
-    return currentChapter[currentLineIndex];
+    return lineIteratorForward.next();
   }
 
   Future<TextLine?> prev() async {
-    if (currentLineIndex == 0) {
-      if (prevChapter.isEmpty) {
-        return null;
-      }
-      nextChapter = currentChapter;
-      currentChapter = prevChapter;
-      currentSpineIndex = currentSpineIndex - 1;
-      currentLineIndex = currentChapter.length;
+    if (!lineIteratorBackward.hasPrev) {
       await _loadPrevChapter();
-    } else {
-      currentLineIndex--;
     }
 
-    return currentChapter[currentLineIndex];
+    return lineIteratorBackward.prev();
   }
 
-  _loadNextChapter() {
-    final chaptersCount = epubPresenter.spine.length;
+  saveBookmark(int chapter, int line, int symbol) {
+    bookmark = Bookmark(chapter: chapter, line: line, symbol: symbol);
 
-    if (currentSpineIndex == chaptersCount - 1) {
-      nextChapter = List.empty();
-      return;
+    EasyDebounce.debounce('save-bookmark', Duration(seconds: 2), () async {
+      print('$bookmark saved');
+
+      if (!await bookmarkFile.exists()) {
+        await bookmarkFile.create(recursive: true);
+      }
+      bookmarkFile.writeAsString(json.encode(bookmark.toJson()));
+    });
+  }
+
+  _loadBookmark() async {
+    if (await bookmarkFile.exists()) {
+      print('loading bookmars');
+      bookmark = Bookmark.fromJson(await readJsonFile(bookmarkFile));
+    } else {
+      bookmark = Bookmark();
     }
+  }
 
-    final nextSpine = epubPresenter.spine[currentSpineIndex + 1];
-    final nextLocation = epubPresenter.getPath(nextSpine.id);
-
-    return _chapterLines(nextLocation).then((value) => nextChapter = value);
+  Future _loadNextChapter() {
+    final lastChapter = chapters.last!.value.first.chapter;
+    return _chapterLines(lastChapter + 1)
+        .then((value) => value != null ? chapters.append(value) : print('end of chapters fwd'));
   }
 
   _loadPrevChapter() {
-    if (currentSpineIndex == 0) {
-      prevChapter = List.empty();
-      return;
-    }
-
-    final prevSpine = epubPresenter.spine[currentSpineIndex - 1];
-    final prevLocation = epubPresenter.getPath(prevSpine.id);
-
-    return _chapterLines(prevLocation).then((value) => prevChapter = value);
+    final firstChapter = chapters.first!.value.first.chapter;
+    return _chapterLines(firstChapter - 1)
+        .then((value) => value != null ? chapters.unshift(value) : print('end of chapters bwd'));
   }
 
-  Future<List<TextLine>> _chapterLines(String chapterPath) {
-    return File(chapterPath)
+  Future<List<TextLine>?> _chapterLines(int spineIndex) async {
+    if (spineIndex < 0 || spineIndex > epubPresenter.spine.length - 1) {
+      return null;
+    }
+
+    final spine = epubPresenter.spine[spineIndex];
+    final href = epubPresenter.getPath(spine.id);
+
+    final res = await File(href)
         .openRead()
         .transform(utf8.decoder)
         .transform(LineSplitter())
@@ -110,17 +117,23 @@ class EpubController {
           var part3 = line.substring(secondIndex + 1);
 
           if (part1 == 'img') {
-            final lastIndex = chapterPath.lastIndexOf(sep);
-            final currentPath = chapterPath.substring(0, lastIndex);
+            final lastIndex = href.lastIndexOf(sep);
+            final currentPath = href.substring(0, lastIndex);
             part3 = [currentPath, part3].join(sep);
           }
 
-          return TextLine(part1, int.parse(part2), part3);
+          return TextLine(part1, int.parse(part2), part3, spineIndex);
         })
         .toList()
         .then((list) {
-          list.add(TextLine('end_chapter', 0, ''));
+          list.add(TextLine('end_chapter', 0, '', spineIndex));
           return list;
         });
+
+    for (var i = 0; i < res.length; i++) {
+      res[i].index = i;
+    }
+
+    return res;
   }
 }

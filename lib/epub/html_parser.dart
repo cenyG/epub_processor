@@ -39,7 +39,7 @@ class HtmlParser {
           walker(0, [tag, 0, href].join(':'));
           break;
         case 'p':
-          var text = elem.text.replaceAll('\n', ' ').trim();
+          var text = elem.text.replaceAll(RegExp('(\r\n|\r|\n)'), ' ').trim();
           text = '\t$text';
           walker(text.length, [tag, text.length, text].join(':'));
           break;
@@ -51,7 +51,7 @@ class HtmlParser {
   }
 
   static _defaultBehavior(XmlElement elem, Function(int size, String str) walker) {
-    final text = elem.text.replaceAll('\n', ' ').trim();
+    final text = elem.text.replaceAll(RegExp('(\r\n|\r|\n)'), ' ').trim();
     walker(text.length, [elem.qualifiedName, text.length, text].join(':'));
   }
 }

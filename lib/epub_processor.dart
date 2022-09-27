@@ -2,15 +2,14 @@ library epub_processor;
 
 import 'dart:io';
 import 'dart:convert';
-import 'dart:math';
 
 import 'package:archive/archive_io.dart';
-import 'package:epub_processor/utils/files.dart';
+import 'package:easy_debounce/easy_debounce.dart';
+import 'package:epub_processor/utils/utils.dart';
 import 'package:html/parser.dart' as html;
 import 'package:xml/xml.dart';
 import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
-import 'package:epub_processor/utils/utils.dart';
 
 part 'epub_processor.g.dart';
 part 'epub/epub_controller.dart';
