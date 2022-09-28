@@ -6,8 +6,10 @@ import 'package:test/test.dart';
 final sep = Platform.pathSeparator;
 
 void main() {
-  final epubsPath = Directory(['test', 'epubs'].join(sep)).absolute.path;
-  final epubs = ['1.epub', '2.epub', '3.epub', 'kf.epub'];
+  final epubsDir = Directory(['test', 'epubs'].join(sep));
+
+  final epubs = epubsDir.listSync().whereType<File>().map((e) => e.absolute.path.split(sep).last).toList();
+  final epubsPath = epubsDir.absolute.path;
 
   test('with cache', () async {
     for (var epub in epubs) {
@@ -18,8 +20,7 @@ void main() {
       final distPath = [epubsPath, 'gen', name].join(sep);
 
       final start = DateTime.now().millisecondsSinceEpoch;
-      await EpubProcessor.process(
-          epubPath: epubPath, dstDir: distPath, tmpDir: tmpPath, wipeTmp: false);
+      await EpubProcessor.process(epubPath: epubPath, dstDir: distPath, tmpDir: tmpPath, wipeTmp: false);
       final end = DateTime.now().millisecondsSinceEpoch;
 
       print('Time to process: ${end - start}ms');
@@ -35,8 +36,7 @@ void main() {
       final distPath = [epubsPath, 'gen', name].join(sep);
 
       final start = DateTime.now().millisecondsSinceEpoch;
-      await EpubProcessor.process(
-          epubPath: epubPath, dstDir: distPath, tmpDir: tmpPath, force: true, wipeTmp: false);
+      await EpubProcessor.process(epubPath: epubPath, dstDir: distPath, tmpDir: tmpPath, force: true, wipeTmp: false);
       final end = DateTime.now().millisecondsSinceEpoch;
 
       print('Time to process: ${end - start}ms');

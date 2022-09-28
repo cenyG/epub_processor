@@ -21,17 +21,25 @@ class EpubController {
 
   EpubController({required this.epubPresenter});
 
+  Future? prevChaptersLoading;
+  Future? nextChaptersLoading;
+
   init() async {
     chapters = LinkedList();
 
     await _loadBookmark();
 
-    await _chapterLines(bookmark.chapter)
-        .then((value) => value != null ? chapters.append(value) : print('end of chapters init'));
-    await _chapterLines(bookmark.chapter - 1)
-        .then((value) => value != null ? chapters.unshift(value) : print('end of chapters down'));
-    await _chapterLines(bookmark.chapter + 1)
-        .then((value) => value != null ? chapters.append(value) : print('end of chapters up'));
+    await _chapterLines(bookmark.chapter).then((value) {
+      if (value != null) chapters.append(value);
+    });
+
+    await _chapterLines(bookmark.chapter - 1).then((value) {
+      if (value != null) chapters.unshift(value);
+    });
+
+    await _chapterLines(bookmark.chapter + 1).then((value) {
+      if (value != null) chapters.append(value);
+    });
 
     lineIteratorForward = chapters.iter.find(bookmark.chapter, bookmark.line);
     lineIteratorBackward = chapters.iter.find(bookmark.chapter, bookmark.line);
@@ -46,16 +54,22 @@ class EpubController {
   }
 
   Future<TextLine?> next() async {
-    if (!lineIteratorForward.hasNextChapter) {
-      await _loadNextChapter();
+    if (!lineIteratorForward.hasNextChapter && nextChaptersLoading == null) {
+      nextChaptersLoading = _loadNextChapter().then((value) => nextChaptersLoading = null);
+    }
+    if (!lineIteratorForward.hasNext && nextChaptersLoading != null) {
+      await nextChaptersLoading;
     }
 
     return lineIteratorForward.next();
   }
 
   Future<TextLine?> prev() async {
-    if (!lineIteratorBackward.hasPrev) {
-      await _loadPrevChapter();
+    if (!lineIteratorBackward.hasPrevChapter && prevChaptersLoading == null) {
+      prevChaptersLoading = _loadPrevChapter().then((value) => prevChaptersLoading = null);
+    }
+    if (!lineIteratorBackward.hasPrev && prevChaptersLoading != null) {
+      await prevChaptersLoading;
     }
 
     return lineIteratorBackward.prev();
@@ -85,14 +99,16 @@ class EpubController {
 
   Future _loadNextChapter() {
     final lastChapter = chapters.last!.value.first.chapter;
-    return _chapterLines(lastChapter + 1)
-        .then((value) => value != null ? chapters.append(value) : print('end of chapters fwd'));
+    return _chapterLines(lastChapter + 1).then((value) {
+      if (value != null) chapters.append(value);
+    });
   }
 
-  _loadPrevChapter() {
+  Future _loadPrevChapter() {
     final firstChapter = chapters.first!.value.first.chapter;
-    return _chapterLines(firstChapter - 1)
-        .then((value) => value != null ? chapters.unshift(value) : print('end of chapters bwd'));
+    return _chapterLines(firstChapter - 1).then((value) {
+      if (value != null) chapters.unshift(value);
+    });
   }
 
   Future<List<TextLine>?> _chapterLines(int spineIndex) async {

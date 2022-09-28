@@ -24,14 +24,11 @@ class HtmlParser {
       final tag = elem.qualifiedName;
 
       switch (tag) {
-        case 'div':
-          if (elem.childElements.isNotEmpty) {
-            _parseLines(elem.childElements, walker);
-          } else {
-            _defaultBehavior(elem, walker);
-          }
+        case 'tr':
+          _defaultBehavior(elem, walker);
           break;
         case 'ul':
+        case 'ol':
           _parseLines(elem.childElements, walker);
           break;
         case 'img':
@@ -39,12 +36,36 @@ class HtmlParser {
           walker(0, [tag, 0, href].join(':'));
           break;
         case 'p':
-          var text = elem.text.replaceAll(RegExp('(\r\n|\r|\n)'), ' ').trim();
-          text = '\t$text';
-          walker(text.length, [tag, text.length, text].join(':'));
+          if (elem.childElements.isNotEmpty) {
+            List<String> accum = [];
+            for (var child in elem.children) {
+              if (child is XmlElement && child.qualifiedName == 'br') {
+                var text = accum.join(' ').replaceAll(RegExp('(\r\n|\r|\n)'), ' ').trim();
+                text = '\t$text';
+                walker(text.length, [tag, text.length, text].join(':'));
+                accum = [];
+              } else {
+                accum.add(child.text);
+              }
+            }
+            if (accum.isNotEmpty) {
+              var text = accum.join(' ').replaceAll(RegExp('(\r\n|\r|\n)'), ' ').trim();
+              text = '\t$text';
+              walker(text.length, [tag, text.length, text].join(':'));
+            }
+          } else {
+            var text = elem.text.replaceAll(RegExp('(\r\n|\r|\n)'), ' ').trim();
+            text = '\t$text';
+            walker(text.length, [tag, text.length, text].join(':'));
+          }
+
           break;
         default:
-          _defaultBehavior(elem, walker);
+          if (elem.childElements.isNotEmpty) {
+            _parseLines(elem.childElements, walker);
+          } else {
+            _defaultBehavior(elem, walker);
+          }
           break;
       }
     }
