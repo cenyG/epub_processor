@@ -75,17 +75,14 @@ class EpubController {
     return lineIteratorBackward.prev();
   }
 
-  saveBookmark(int chapter, int line, int symbol) {
+  saveBookmark(int chapter, int line, int symbol) async {
     bookmark = Bookmark(chapter: chapter, line: line, symbol: symbol);
 
-    EasyDebounce.debounce('save-bookmark', Duration(seconds: 2), () async {
-      print('$bookmark saved');
-
-      if (!await bookmarkFile.exists()) {
-        await bookmarkFile.create(recursive: true);
-      }
-      bookmarkFile.writeAsString(json.encode(bookmark.toJson()));
-    });
+    if (!await bookmarkFile.exists()) {
+      await bookmarkFile.create(recursive: true);
+    }
+    await bookmarkFile.writeAsString(json.encode(bookmark.toJson()));
+    print('$bookmark saved');
   }
 
   _loadBookmark() async {
